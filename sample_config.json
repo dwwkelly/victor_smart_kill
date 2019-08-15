@@ -1,0 +1,19 @@
+{
+    "username": "MYUSERNAME",
+    "password": "MYPASSWORD",
+    "traps":
+    [
+        {
+            "trap_name": "MYTRAPNAME_1",
+            "trap_number": 123456
+        },
+        {
+            "trap_name": "MYTRAPNAME_2",
+            "trap_number": 123457
+        },
+        {
+            "trap_name": "MYTRAPNAME_3",
+            "trap_number": 123458
+        }
+    ]
+}
