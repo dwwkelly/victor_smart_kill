@@ -7,6 +7,7 @@ import json
 import time
 import click
 import requests
+import getpass
 
 
 API_AUTH = 'https://www.victorsmartkill.com/api-token-auth/'
@@ -40,11 +41,18 @@ def main(config_fname, token_fname):
 
         token = json.loads(token_str)
     else:
+
+        # Get the password from the command line
+        if 'password' not in config:
+            password = getpass.getpass()
+        else:
+            password = config['password']
+
         token = {}
         token['current'] = {}
         token['old'] = []
         data = {"username": config['username'],
-                "password": config['password']}
+                "password": password}
         response = requests.post(API_AUTH, data)
         token['current']['token'] = response.json()['token']
         token['current']['request_date'] = time.time()
