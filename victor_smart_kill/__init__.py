@@ -4,4 +4,7 @@
 
 __author__ = """Devin Kelly"""
 __email__ = 'dwwkelly@fastmail.fm'
-__version__ = '0.1.0'
+
+from victor_smart_kill.victor_smart_kill import get_token
+from victor_smart_kill.victor_smart_kill import update_config
+from victor_smart_kill.victor_smart_kill import status

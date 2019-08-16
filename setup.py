@@ -37,7 +37,7 @@ setup(
     description="Python Boilerplate contains all the boilerplate you need to create a Python package.",
     entry_points={
         'console_scripts': [
-            'victor_smart_kill=victor_smart_kill.cli:main',
+            'victor_smart_kill=victor_smart_kill.cli:cli',
         ],
     },
     install_requires=requirements,

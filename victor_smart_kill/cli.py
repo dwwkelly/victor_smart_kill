@@ -5,78 +5,61 @@ import os
 import sys
 import json
 import time
+import datetime
 import click
 import requests
 import getpass
+import victor_smart_kill as vsk
 
-
-API_AUTH = 'https://www.victorsmartkill.com/api-token-auth/'
-API_TRAPS = 'https://www.victorsmartkill.com/traps/'
-API_MOBILEAPPS = 'https://www.victorsmartkill.com/mobileapps/'
-API_OPERATORS = 'https://www.victorsmartkill.com/operators/2/'
-API_USERS =  'https://www.victorsmartkill.com/users/'
-
-
-@click.command()
+@click.group()
 @click.option('-c', '--config', 'config_fname', default=os.path.expanduser("~/.victorsmartkill/config.json"), help='Config file to use')
 @click.option('-t', '--token', 'token_fname', default=os.path.expanduser("~/.victorsmartkill/token.json"), help='JSON file to store token in')
-def main(config_fname, token_fname):
+@click.pass_context
+def cli(ctx, config_fname, token_fname):
+    ctx.obj = {"config_fname": config_fname, "token_fname": token_fname}
 
-    if not os.path.exists(config_fname):
-        print('Needs config file "{0}"'.format(config_fname))
-        sys.exit(1)
+@cli.command()
+@click.pass_obj
+def login(ctx):
 
-    with open(config_fname, 'r') as fd:
-        config_str = fd.read()
+    vsk.get_token(ctx['config_fname'], ctx['token_fname'])
 
-    try:
-        config = json.loads(config_str)
-    except:
-        print("Couldn't open config file '{0}'".format(config_fname))
-        config = None
+@cli.command()
+@click.pass_obj
+def update_config(ctx):
+    vsk.update_config(ctx['config_fname'], ctx['token_fname'])
 
-    if os.path.exists(token_fname):
-        with open(token_fname, 'r') as fd:
-            token_str = fd.read()
+@cli.command()
+@click.argument('within', required=False, default=24)
+@click.argument('name', required=False, default=None)
+@click.pass_obj
+def status(ctx, within, name):
 
-        token = json.loads(token_str)
-    else:
+    results = vsk.status(ctx['config_fname'], ctx['token_fname'], within, name)
 
-        # Get the password from the command line
-        if 'password' not in config:
-            password = getpass.getpass()
-        else:
-            password = config['password']
+    for trap in results:
+        s = "id={0} name='{1}' kills_present={2} last_kill={3} last_report={4}"
+        print(s.format(trap['id'], trap['name'], trap['kills_present'], trap['last_kill'], trap['last_report']))
 
-        token = {}
-        token['current'] = {}
-        token['old'] = []
-        data = {"username": config['username'],
-                "password": password}
-        response = requests.post(API_AUTH, data)
-        token['current']['token'] = response.json()['token']
-        token['current']['request_date'] = time.time()
-        token['current']['experation_date'] = -1.0
+@cli.command()
+@click.argument('within', required=False, default=24)
+@click.argument('name', required=False, default=None)
+@click.pass_obj
+def check(ctx, within, name):
 
-        with open(token_fname, 'w') as fd:
-            fd.write(json.dumps(token))
+    results = vsk.status(ctx['config_fname'], ctx['token_fname'], within, name)
+    date_fmt = '%Y-%m-%dT%H:%M:%S.%fZ'
 
+    for trap in results:
+        s = "id={0} name='{1}' kills_present={2} last_kill={3} last_report={4}"
 
-    headers = {'Host' : 'www.victorsmartkill.com',
-               'Connection':'keep-alive',
-               'Accept':'*/*',
-               'User-Agent':'Victor/1.7 (com.victor.victorsmartkill; build:10; iOS 12.4.0) Alamofire/4.7.0',
-               'Accept-Language':'en-US;q=1.0',
-               'Authorization':'Token {0}'.format(token['current']['token']),
-               'Accept-Encoding':'gzip;q=1.0, compress;q=0.5',
-               'content-length': '0'
-               }
-    response = requests.get(API_TRAPS, headers=headers)
-    print(json.dumps(response.json()))
+        last_report = trap['last_report']
+        kills_present = trap['kills_present']
+        if kills_present is None:
+            kills_present = 0
 
+        last_report_obj = datetime.datetime.strptime(last_report, date_fmt)
+        threshold_time = datetime.datetime.now() - datetime.timedelta(hours=within)
 
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())  # pragma: no cover
+        if kills_present > 0 or last_report_obj < threshold_time:
+            print(s.format(trap['id'], trap['name'], trap['kills_present'], trap['last_kill'], trap['last_report']))
